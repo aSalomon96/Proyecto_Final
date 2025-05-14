@@ -11,7 +11,7 @@ Permite:
 - Calcular indicadores técnicos y fundamentales clave.
 - Almacenar todo en PostgreSQL para su posterior análisis y modelado.
 - Generar reportes y dashboards para apoyar decisiones de inversión.
-
+- Realizar Análisis Exploratorio de Datos (EDA) detallado para obtener insights valiosos.
 
 ---
 
@@ -40,6 +40,7 @@ Permite:
 | **Orquestación** | `main.py` | Automatización completa del proceso ETL. |
 
 ---
+
 ## 📊 Variables de Interés
 
 - **Históricos**: Open, High, Low, Close, Volume.  
@@ -57,6 +58,22 @@ Permite:
 
 ---
 
+## 📈 Análisis Exploratorio de Datos (EDA)
+
+El análisis exploratorio permitió detectar:
+- 🔍 Columnas con alta proporción de nulos (`EPS Growth YoY`, `Dividend Yield`).
+- 🧮 Variables con sesgo como `PER` y `Market Cap`, ideales para transformaciones logarítmicas.
+- 🔗 Fuertes correlaciones entre variables como `Market Cap` y `Dividend Yield`.
+- 🧨 Outliers identificados con Z-score y boxplots.
+- 📅 Comportamientos temporales y fechas clave (como marzo 2020).
+
+### Recomendaciones:
+- Usar mediana para imputaciones en lugar de la media.
+- Realizar normalización y selección de features para modelado.
+- Aprovechar patrones temporales en modelos predictivos o alertas.
+
+---
+
 ## 🗃️ Datasets Finales
 
 - **empresas_ready.csv**: Información básica (Ticker, Nombre, Sector, Industria).
@@ -64,7 +81,7 @@ Permite:
 - **indicadores_fundamentales_ready.csv**: PER, ROE, Deuda/Patrimonio, Margen Neto, etc.
 - **indicadores_tecnicos_ready.csv**: SMA, EMA, RSI, MACD, ATR, OBV, Volatilidad, Bollinger Bands y niveles de Fibonacci.
 - **precios_variacion_ready.csv**: Calculo de variaciones diarias, semanal, mensual, anual y cada 5 años.
-- **resumen_inversion.csv**: Decision Final de compra o venta para cada indicador tecnico y fundamental.
+- **resumen_inversion.csv**: Decision Final de compra o venta para cada indicador técnico y fundamental.
 
 ---
 
@@ -99,18 +116,14 @@ Permite:
 ✅ Actualización diaria implementada.  
 ✅ Base de datos PostgreSQL funcional.  
 ✅ Indicadores técnicos y fundamentales calculados.  
-🚀 Próximo paso: desarrollo de Análisis Exploratorio de Datos
+✅ EDA completo documentado y visualizado.  
+🚀 Próximo paso: dashboards y modelos predictivos.
 
 ---
 
-## 📈 Próximos Desarrollos
+## 📌 Próximos Desarrollos
 
-- Realización de un Análisis Exploratorio de Datos (EDA) sobre la base de datos creada.
-- Generación automática de señales de trading basadas en análisis técnico y fundamental.
-- Implementación de modelos predictivos sobre precios históricos.
 - Construcción de dashboards interactivos en Power BI para análisis visual.
-
-
 
 ---
 
