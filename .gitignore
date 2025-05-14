@@ -1,0 +1,36 @@
+# Ignorar entornos virtuales
+venv/
+env/
+
+# Ignorar configuraciones del sistema
+__pycache__/
+*.pyc
+.DS_Store
+
+# ignorar archivos docx de entregables
+*.docx
+
+# Ignorar carpeta de notebooks prueba
+notebooks/prueba/
+src/eda/
+#ignoramos la carpeta que esta en carpeta etl que se llama practica
+practica/
+
+# Ignorar carpetas de datos pesados
+data/
+
+# Ignorar datos pesados
+
+*.csv
+*.pdf
+*.db
+*.zip
+*.tar.gz
+*.pkl
+
+# Ignorar carpetas de compilación
+__pycache__/
+*.pyc
+
+# Ignorar archivos de sistema
+.DS_Store
