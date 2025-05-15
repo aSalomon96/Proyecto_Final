@@ -10,22 +10,77 @@ DIR_READY = "../../data/clean_data/"
 os.makedirs(DIR_READY, exist_ok=True)
 
 def log(msg):
+    """
+    Imprime un mensaje en consola con una marca temporal.
+
+    Esta función facilita el seguimiento cronológico de los eventos y operaciones
+    dentro del script, permitiendo un registro más claro y útil para debugging o monitoreo.
+
+    Args:
+        msg (str): Mensaje que se desea imprimir junto con la marca de tiempo.
+
+    Returns:
+        None
+    """
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}")
 
+
 def transformar_empresas(input_file, output_file):
+    """
+    Transforma un archivo CSV con datos de empresas para conservar solo columnas clave 
+    como el ticker, nombre, sector e industria, y guarda el resultado en un nuevo archivo CSV.
+
+    Esta función es útil para estandarizar y simplificar el dataset de empresas,
+    dejando solo la información esencial para análisis posteriores o visualizaciones.
+
+    Args:
+        input_file (str): Ruta al archivo CSV de entrada que contiene los datos originales.
+        output_file (str): Ruta donde se guardará el archivo CSV transformado.
+
+    Returns:
+        None: La función no retorna valores, solo genera un nuevo archivo con la información filtrada.
+    """
+    
     log("Transformando datos de empresas...")
+
+    # Carga el archivo CSV original en un DataFrame
     df = pd.read_csv(input_file)
 
+    # Define las columnas que se quieren conservar: ticker, nombre, sector e industria
     columnas_finales = ["Ticker", "Name", "Sector", "Industry"]
+
+    # Filtra el DataFrame para conservar solo las columnas seleccionadas
     df = df[columnas_finales]
 
+    # Guarda el nuevo DataFrame en el archivo de salida sin incluir el índice
     df.to_csv(output_file, index=False)
+
+    # Imprime un log indicando que la transformación fue exitosa
     log(f"Empresas listas guardadas en: {output_file}")
 
+
 def transformar_precios_historicos(input_file, output_file):
+    """
+    Transforma un archivo CSV de precios históricos al formato tidy y estandariza los nombres de columnas.
+
+    La función renombra columnas para asegurar consistencia, selecciona solo las variables relevantes
+    y normaliza los formatos de fecha y precisión decimal de los precios. Ideal para preparar los datos 
+    antes de análisis o visualización.
+
+    Args:
+        input_file (str): Ruta al archivo CSV con los datos históricos originales.
+        output_file (str): Ruta donde se guardará el archivo CSV transformado en formato tidy.
+
+    Returns:
+        None: La función no retorna ningún valor, pero guarda el resultado procesado en disco.
+    """
+    
     log("Transformando precios historicos (formato tidy)...")
+
+    # Carga el archivo CSV original
     df = pd.read_csv(input_file)
 
+    # Renombra las columnas para asegurar nombres estandarizados
     df = df.rename(columns={
         "date": "Date",
         "ticker": "Ticker",
@@ -36,87 +91,261 @@ def transformar_precios_historicos(input_file, output_file):
         "volume": "Volume"
     })
 
+    # Selecciona solo las columnas relevantes en el orden deseado
     df = df[['Date', 'Ticker', 'Open', 'High', 'Low', 'Close', 'Volume']]
+
+    # Convierte la columna 'Date' a tipo datetime para análisis temporal correcto
     df['Date'] = pd.to_datetime(df['Date'])
+
+    # Redondea los precios a 3 decimales para estandarizar la precisión
     df[['Open', 'High', 'Low', 'Close']] = df[['Open', 'High', 'Low', 'Close']].round(3)
 
+    # Guarda el DataFrame procesado en el archivo de salida
     df.to_csv(output_file, index=False)
+
     log(f"Precios historicos listos guardados en: {output_file}")
 
+
 def transformar_indicadores_fundamentales(input_file, output_file):
+    """
+    Transforma el archivo de indicadores fundamentales para conservar solo columnas clave
+    y calcular el ranking de empresas según capitalización de mercado.
+
+    Esta función filtra las columnas más relevantes del archivo original y agrega un ranking
+    descendente basado en el valor de 'Market Cap', lo que permite ordenar rápidamente
+    las empresas más grandes del universo analizado.
+
+    Args:
+        input_file (str): Ruta al archivo CSV con los indicadores fundamentales crudos.
+        output_file (str): Ruta donde se guardará el archivo CSV transformado.
+
+    Returns:
+        None: La función no retorna valores, pero guarda el resultado procesado en disco.
+    """
+
     log("Transformando indicadores fundamentales...")
+
+    # Carga el archivo CSV con los datos fundamentales
     df = pd.read_csv(input_file)
 
+    # Define las columnas que se desean conservar
     columnas_finales = [
         "Ticker", "Name", "PER", "ROE", "EPS Growth YoY",
         "Deuda/Patrimonio", "Margen Neto", "Dividend Yield", "Market Cap", "Acciones en Circulación"
     ]
 
+    # Filtra el DataFrame para conservar solo las columnas seleccionadas
     df = df[columnas_finales]
+
+    # Agrega una columna de ranking por capitalización de mercado (de mayor a menor)
     df["Ranking MarketCap"] = df["Market Cap"].rank(ascending=False, method='first').astype(int)
 
+    # Guarda el DataFrame transformado en un nuevo archivo CSV sin el índice
     df.to_csv(output_file, index=False)
+
     log(f"Indicadores fundamentales listos guardados en: {output_file}")
 
+
 def calcular_rsi(close, window=14):
+    """
+    Calcula el índice de fuerza relativa (RSI) para una serie de precios de cierre.
+
+    El RSI es un indicador técnico que mide la velocidad y el cambio de los movimientos de precios.
+    Su valor oscila entre 0 y 100, y comúnmente se utiliza para identificar condiciones de sobrecompra 
+    (RSI > 70) o sobreventa (RSI < 30).
+
+    Args:
+        close (pd.Series): Serie de precios de cierre.
+        window (int, opcional): Ventana de cálculo para el promedio móvil de ganancias/pérdidas. 
+                                Por defecto es 14 períodos.
+
+    Returns:
+        pd.Series: Serie de valores RSI calculados para cada punto temporal.
+    """
+
+    # Calcula la diferencia entre precios consecutivos
     delta = close.diff()
+
+    # Separa los movimientos positivos (ganancias)
     gain = delta.clip(lower=0)
+
+    # Separa los movimientos negativos (pérdidas), convirtiéndolos en positivos
     loss = -delta.clip(upper=0)
+
+    # Calcula el promedio móvil de las ganancias sobre la ventana definida
     avg_gain = gain.rolling(window=window).mean()
+
+    # Calcula el promedio móvil de las pérdidas sobre la misma ventana
     avg_loss = loss.rolling(window=window).mean()
+
+    # Relación entre ganancia media y pérdida media
     rs = avg_gain / avg_loss
+
+    # Fórmula final del RSI
     rsi = 100 - (100 / (1 + rs))
+
     return rsi
 
+
 def calcular_macd(close, short=12, long=26, signal=9):
+    """
+    Calcula el indicador MACD (Moving Average Convergence Divergence) a partir de precios de cierre.
+
+    El MACD es un indicador de momentum basado en la diferencia entre dos medias móviles exponenciales (EMA),
+    una de corto y otra de largo plazo. Además, se calcula una línea de señal (EMA del MACD) y un histograma 
+    que representa la diferencia entre ambos.
+
+    Args:
+        close (pd.Series): Serie de precios de cierre.
+        short (int, opcional): Ventana para la EMA de corto plazo. Por defecto es 12.
+        long (int, opcional): Ventana para la EMA de largo plazo. Por defecto es 26.
+        signal (int, opcional): Ventana para la EMA de la señal. Por defecto es 9.
+
+    Returns:
+        Tuple[pd.Series, pd.Series, pd.Series]: 
+            - macd: Serie del MACD (EMA corta - EMA larga).
+            - macd_signal: Línea de señal (EMA del MACD).
+            - macd_hist: Histograma del MACD (MACD - señal), usado para detectar cambios de momentum.
+    """
+
+    # Calcula la EMA de corto plazo
     ema_short = close.ewm(span=short, adjust=False).mean()
+
+    # Calcula la EMA de largo plazo
     ema_long = close.ewm(span=long, adjust=False).mean()
+
+    # Resta la EMA larga de la corta → línea MACD
     macd = ema_short - ema_long
+
+    # Calcula la línea de señal como una EMA del MACD
     macd_signal = macd.ewm(span=signal, adjust=False).mean()
+
+    # Calcula el histograma del MACD (diferencia entre MACD y su señal)
     macd_hist = macd - macd_signal
+
+    # Devuelve las tres series: MACD, señal e histograma
     return macd, macd_signal, macd_hist
 
+
 def calcular_atr(high, low, close, window=14):
+    """
+    Calcula el ATR (Average True Range), un indicador técnico que mide la volatilidad del mercado.
+
+    El ATR representa el rango de precio real durante un período determinado, teniendo en cuenta gaps 
+    entre sesiones. Es ampliamente utilizado para definir niveles de stop loss dinámicos y evaluar
+    el riesgo de una operación.
+
+    Args:
+        high (pd.Series): Serie de precios máximos diarios.
+        low (pd.Series): Serie de precios mínimos diarios.
+        close (pd.Series): Serie de precios de cierre diarios.
+        window (int, opcional): Número de períodos para el promedio móvil. Por defecto es 14.
+
+    Returns:
+        pd.Series: Serie con los valores del ATR calculados.
+    """
+
+    # Rango diario: diferencia entre el máximo y el mínimo del día
     high_low = high - low
+
+    # Diferencia absoluta entre el máximo del día y el cierre del día anterior
     high_close = (high - close.shift()).abs()
+
+    # Diferencia absoluta entre el mínimo del día y el cierre del día anterior
     low_close = (low - close.shift()).abs()
+
+    # Combina los tres posibles rangos para cada día
     ranges = pd.concat([high_low, high_close, low_close], axis=1)
+
+    # Determina el "true range" como el mayor de los tres valores por fila
     true_range = ranges.max(axis=1)
+
+    # Calcula el ATR como promedio móvil simple del true range
     atr = true_range.rolling(window=window).mean()
+
+    # Devuelve la serie de ATR
     return atr
 
 def calcular_obv(close, volume):
+    """
+    Calcula el indicador On-Balance Volume (OBV) a partir de precios de cierre y volumen negociado.
+
+    El OBV es un indicador técnico que relaciona el volumen con el movimiento de precios. 
+    Suma o resta el volumen diario en función de si el precio cierra más alto o más bajo 
+    que el día anterior. Se utiliza para detectar divergencias entre precio y volumen, 
+    anticipando posibles cambios de tendencia.
+
+    Args:
+        close (pd.Series): Serie de precios de cierre.
+        volume (pd.Series): Serie de volúmenes negociados diarios.
+
+    Returns:
+        pd.Series: Serie con los valores acumulados del OBV.
+    """
+
+    # Calcula el signo del cambio en el precio de cierre respecto al día anterior:
+    #  1 si subió, -1 si bajó, 0 si se mantuvo igual
+    # Luego multiplica por el volumen para agregar (o restar) volumen al OBV
     obv = (np.sign(close.diff()) * volume).fillna(0).cumsum()
+
+    # Devuelve el OBV acumulado como serie
     return obv
 
+
 def calcular_indicadores_tecnicos(input_file, output_file):
-    """Calcula indicadores técnicos + niveles de Fibonacci sobre precios históricos."""
+    """
+    Calcula indicadores técnicos clásicos y niveles de retroceso de Fibonacci sobre precios históricos
+    para una lista de tickers, y guarda el resultado en un archivo CSV.
+
+    Esta función agrupa los datos por ticker y genera múltiples indicadores de análisis técnico, incluyendo:
+    - Medias móviles (SMA y EMA)
+    - RSI
+    - MACD (línea, señal e histograma)
+    - ATR (volatilidad real)
+    - OBV (flujo de volumen)
+    - Bandas de Bollinger
+    - Volatilidad histórica (desviación estándar móvil)
+    - Niveles de retroceso de Fibonacci con categorización como soporte o resistencia
+
+    Args:
+        input_file (str): Ruta al archivo CSV con los precios históricos. 
+                          Debe contener columnas: 'Date', 'Ticker', 'Close', 'High', 'Low', 'Volume'.
+        output_file (str): Ruta donde se guardará el archivo CSV con los indicadores calculados.
+
+    Returns:
+        None: Los resultados se guardan directamente en el archivo especificado.
+    """
     log("Calculando indicadores técnicos y niveles de Fibonacci...")
     df = pd.read_csv(input_file)
 
     df['Date'] = pd.to_datetime(df['Date'])
     df = df.sort_values(by=['Ticker', 'Date'])
 
-    indicadores = []
+    indicadores = [] # Lista donde se guardarán los resultados por ticker
 
     for ticker, group in tqdm(df.groupby('Ticker')):
         group = group.copy()
 
         # Cálculo de indicadores tradicionales
+        # Medias móviles
         group['SMA_20'] = group['Close'].rolling(window=20).mean()
         group['SMA_50'] = group['Close'].rolling(window=50).mean()
         group['EMA_20'] = group['Close'].ewm(span=20, adjust=False).mean()
 
+        # RSI
         group['RSI_14'] = calcular_rsi(group['Close'])
         group['MACD'], group['MACD_Signal'], group['MACD_Hist'] = calcular_macd(group['Close'])
 
+        # ATR y OBV
         group['ATR_14'] = calcular_atr(group['High'], group['Low'], group['Close'])
         group['OBV'] = calcular_obv(group['Close'], group['Volume'])
 
+        # Bandas de Bollinger (usando media y desviación estándar de 20 días)
         group['BB_Middle'] = group['Close'].rolling(window=20).mean()
         group['BB_Upper'] = group['BB_Middle'] + 2 * group['Close'].rolling(window=20).std()
         group['BB_Lower'] = group['BB_Middle'] - 2 * group['Close'].rolling(window=20).std()
 
+        # Volatilidad histórica (std de 20 días)
         group['Volatility_20'] = group['Close'].rolling(window=20).std()
 
         # Cálculo de Niveles Fibonacci
@@ -131,9 +360,18 @@ def calcular_indicadores_tecnicos(input_file, output_file):
         group['Fib_61.8%'] = max_close - diff * 0.618
         group['Fib_100%'] = min_close
 
-        # Último Close del ticker
+        #Los niveles de Fibonacci más comunes son porcentajes de retroceso desde el punto más alto (Fib_0.0% = máximo) hacia el más bajo (Fib_100% = mínimo).
+        # Por ejemplo:
+        # Fib_38.2% = max_close - 38.2% del rango → es un nivel en el que muchos traders esperan un rebote alcista si el precio baja hasta ahí.
+        # Los valores se calculan como restas desde el máximo.
+        # Este es el clásico patrón de retroceso que suele usarse tras un impulso para ver hasta dónde puede retroceder antes de continuar la tendencia.
+        
+        # Último Close del ticker - Se obtiene el precio de cierre más reciente, que vamos a comparar con los niveles Fibonacci.
         ultimo_close = group.iloc[-1]['Close']
 
+        # Determinación del nivel Fibonacci más cercano
+        # Calcula la distancia absoluta del último precio a cada uno de los niveles.
+        # Luego selecciona el nivel más cercano (min(diffs, key=diffs.get)).
         diffs = {
             '0.0%': abs(ultimo_close - group.iloc[-1]['Fib_0.0%']),
             '23.6%': abs(ultimo_close - group.iloc[-1]['Fib_23.6%']),
@@ -144,6 +382,10 @@ def calcular_indicadores_tecnicos(input_file, output_file):
         }
         nivel_cercano = min(diffs, key=diffs.get)
 
+        #Si el precio está cerca de niveles medios (como 38.2%, 50%, 61.8%), se asume que el nivel actúa como soporte, 
+        # es decir, un posible piso donde el precio rebote.
+        # Si está cerca del 0% o 23.6% (más cerca del máximo), se asume resistencia.
+        # El 100% (mínimo) se considera neutro, aunque podrías tratarlo como soporte extremo si querés afinar más.
         if nivel_cercano in ['38.2%', '50.0%', '61.8%']:
             estado_fib = 'SOPORTE'
         elif nivel_cercano in ['0.0%', '23.6%']:
@@ -173,6 +415,28 @@ def calcular_resumen_inversion(
     precios_historicos_file=DIR_READY + "precios_historicos_ready.csv",
     output_file=DIR_READY + "resumen_inversion_ready.csv"
 ):
+    """
+    Genera un resumen consolidado de señales de inversión para cada ticker, combinando análisis técnico 
+    y fundamental, y guarda el resultado en un archivo CSV.
+
+    Esta función cruza los datos técnicos, fundamentales e históricos, calcula señales específicas de 
+    compra, venta o mantener para cada indicador, y toma una decisión final por mayoría. Además, 
+    evalúa el estado de las Bandas de Bollinger y el nivel de Fibonacci más cercano.
+
+    Args:
+        precios_tecnicos_file (str): Ruta al archivo CSV con indicadores técnicos por fecha y ticker.
+        fundamentales_file (str): Ruta al archivo CSV con indicadores fundamentales por ticker.
+        precios_historicos_file (str): Ruta al archivo CSV con precios históricos tidy.
+        output_file (str): Ruta donde se guardará el resumen generado con las decisiones de inversión.
+
+    Returns:
+        None: La función no retorna valores, pero genera un archivo CSV consolidado.
+
+    Raises:
+        FileNotFoundError: Si alguno de los archivos de entrada no se encuentra.
+        ValueError: Si faltan columnas clave como 'Ticker', 'Close', 'RSI_14', etc.
+        Exception: Para errores inesperados durante la lectura, procesamiento o escritura.
+    """
     print("🔍 Calculando resumen detallado de inversión...")
 
     # Cargar datasets

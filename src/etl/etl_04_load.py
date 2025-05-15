@@ -16,7 +16,20 @@ DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT")
 
 def get_connection():
-    """Establece conexión a la base de datos PostgreSQL."""
+    """
+    Carga las variables de entorno desde un archivo `.env` y asigna los valores a constantes utilizadas
+    para la conexión a una base de datos.
+
+    Esta técnica permite mantener las credenciales y parámetros sensibles fuera del código fuente,
+    siguiendo buenas prácticas de seguridad y portabilidad.
+
+    Variables esperadas en el archivo .env:
+        - DB_NAME: Nombre de la base de datos.
+        - DB_USER: Usuario con permisos de acceso.
+        - DB_PASSWORD: Contraseña del usuario.
+        - DB_HOST: Dirección del host donde corre la base de datos.
+        - DB_PORT: Puerto de conexión a la base de datos.
+    """
     return psycopg2.connect(
         dbname=DB_NAME,
         user=DB_USER,
@@ -26,12 +39,38 @@ def get_connection():
     )
 
 def upsert_empresas(filepath):
-    """Carga o actualiza la tabla empresas."""
+    """
+    Inserta o actualiza registros en la tabla `empresas` de una base de datos PostgreSQL a partir de un archivo CSV.
+
+    Esta función realiza un *upsert* (insert or update) para cada fila del archivo especificado, 
+    asegurando que si ya existe un `ticker`, se actualicen sus campos `name`, `sector` e `industry` 
+    con los nuevos valores. Utiliza la cláusula `ON CONFLICT` de PostgreSQL para evitar duplicados.
+
+    Args:
+        filepath (str): Ruta al archivo CSV que contiene las columnas: 'Ticker', 'Name', 'Sector', 'Industry'.
+
+    Returns:
+        None: La función no devuelve ningún valor, pero actualiza la base de datos con los datos del archivo.
+
+    Raises:
+        FileNotFoundError: Si el archivo CSV no existe.
+        psycopg2.DatabaseError: Si hay un error de conexión o ejecución de consulta SQL.
+        KeyError: Si faltan columnas esperadas en el archivo.
+
+    Requisitos:
+        - La tabla `empresas` debe existir en la base de datos con los campos:
+          `ticker` (clave primaria), `name`, `sector`, `industry`.
+        - La función `get_connection()` debe devolver una conexión válida a la base de datos.
+    """
+
+    # Carga el archivo CSV como DataFrame
     df = pd.read_csv(filepath)
-    
+
+    # Establece la conexión a la base de datos y crea un cursor para ejecutar consultas
     conn = get_connection()
     cursor = conn.cursor()
 
+    # Consulta SQL que realiza un UPSERT: inserta si no existe, actualiza si ya existe el ticker
     insert_query = """
         INSERT INTO empresas (ticker, name, sector, industry)
         VALUES (%s, %s, %s, %s)
@@ -41,31 +80,65 @@ def upsert_empresas(filepath):
             industry = EXCLUDED.industry;
     """
 
+    # Mensaje informativo
     print("\n🏢 Cargando tabla de EMPRESAS...")
+
+    # Itera sobre cada fila del DataFrame e inserta/actualiza en la base de datos
     for _, row in tqdm(df.iterrows(), total=len(df)):
         cursor.execute(insert_query, (
             row['Ticker'], row['Name'], row['Sector'], row['Industry']
         ))
 
+    # Confirma los cambios en la base de datos
     conn.commit()
+
+    # Cierra el cursor y la conexión
     cursor.close()
     conn.close()
+
+    # Informa que el proceso fue exitoso
     print(f"✅ Empresas: {len(df)} registros insertados/actualizados.")
 
 def upsert_precios_historicos(filepath):
-    """Carga o actualiza precios históricos (solo los nuevos)."""
+    """
+    Inserta nuevos registros de precios históricos en la base de datos, omitiendo los duplicados ya existentes.
+
+    Esta función compara las fechas del archivo CSV con la última fecha disponible en la tabla 
+    `precios_historicos` y carga únicamente los registros más recientes. Usa un `ON CONFLICT` para 
+    evitar insertar filas duplicadas basadas en la combinación `(date, ticker)`.
+
+    Args:
+        filepath (str): Ruta al archivo CSV que contiene precios históricos con columnas:
+                        'Date', 'Ticker', 'Open', 'High', 'Low', 'Close', 'Volume'.
+
+    Returns:
+        None: La función no devuelve valores, pero actualiza la tabla `precios_historicos` en la base de datos.
+
+    Raises:
+        FileNotFoundError: Si el archivo CSV no existe.
+        psycopg2.DatabaseError: Si ocurre un error durante la conexión o ejecución de SQL.
+        KeyError: Si faltan columnas esperadas en el CSV.
+        ValueError: Si la conversión de fechas falla.
+
+    Requisitos:
+        - La tabla `precios_historicos` debe tener una restricción de unicidad en (date, ticker).
+        - La función `get_connection()` debe retornar una conexión válida a PostgreSQL.
+    """
     df = pd.read_csv(filepath)
     df['Date'] = pd.to_datetime(df['Date'])
 
     conn = get_connection()
     cursor = conn.cursor()
 
+    # Consulta la última fecha de precios ya registrada en la tabla
     cursor.execute("SELECT MAX(date) FROM precios_historicos;")
     max_date_db = cursor.fetchone()[0]
 
+    # Si hay datos en la tabla, filtra solo los registros más nuevos
     if max_date_db is not None:
         df = df[df['Date'] > pd.to_datetime(max_date_db)]
 
+    # Si no hay datos nuevos para insertar, termina el proceso
     if df.empty:
         print("ℹ️ No hay nuevos precios históricos para cargar.")
         conn.close()
@@ -89,8 +162,40 @@ def upsert_precios_historicos(filepath):
     conn.close()
     print(f"✅ Precios históricos: {len(df)} registros insertados.")
 
-def upsert_fundamentales(filepath):
-    """Carga o actualiza los datos fundamentales."""
+def upsert_fundamentales(filepath):    
+    """
+    Inserta o actualiza los indicadores fundamentales de empresas en la base de datos.
+
+    Esta función realiza un *upsert* (insertar o actualizar) en la tabla `indicadores_fundamentales` 
+    utilizando como clave el `ticker`. Si ya existe, se actualizan los campos con los valores nuevos; 
+    si no existe, se inserta como nuevo registro.
+
+    Args:
+        filepath (str): Ruta al archivo CSV que contiene las columnas:
+            - 'Ticker'
+            - 'PER'
+            - 'ROE'
+            - 'EPS Growth YoY'
+            - 'Deuda/Patrimonio'
+            - 'Margen Neto'
+            - 'Dividend Yield'
+            - 'Market Cap'
+            - 'Ranking MarketCap'
+            - 'Acciones en Circulación'
+
+    Returns:
+        None: La función no retorna valores, pero actualiza la base de datos con los datos del archivo.
+
+    Raises:
+        FileNotFoundError: Si el archivo CSV no existe.
+        psycopg2.DatabaseError: Si ocurre un error al ejecutar la consulta SQL.
+        KeyError: Si faltan columnas esperadas en el archivo.
+        Exception: Para errores inesperados durante la ejecución.
+
+    Requisitos:
+        - La tabla `indicadores_fundamentales` debe existir con una restricción de unicidad sobre `ticker`.
+        - La función `get_connection()` debe retornar una conexión activa a la base de datos.
+    """
     df = pd.read_csv(filepath)
     
     conn = get_connection()
@@ -124,8 +229,33 @@ def upsert_fundamentales(filepath):
     conn.close()
     print(f"✅ Fundamentales: {len(df)} registros actualizados/insertados.")
 
-def upsert_indicadores_tecnicos(csv_path):
-    """Carga incremental de indicadores técnicos incluyendo Fibonacci."""
+def upsert_indicadores_tecnicos(csv_path):    
+    """
+    Inserta o actualiza indicadores técnicos en la base de datos de forma incremental,
+    incluyendo medias móviles, RSI, MACD, ATR, OBV, Bandas de Bollinger y niveles de Fibonacci.
+
+    Solo se insertan registros posteriores a la última fecha registrada en la tabla `indicadores_tecnicos`.
+    En caso de conflicto por `(date, ticker)`, los datos existentes se actualizan.
+
+    Args:
+        csv_path (str): Ruta al archivo CSV que contiene los indicadores técnicos procesados. 
+                        Debe incluir columnas como 'Date', 'Ticker', 'Close', 'RSI_14', 'MACD', 
+                        'Fib_38.2%', 'Estado_Fibonacci', entre otras.
+
+    Returns:
+        None: La función no devuelve un valor explícito, pero actualiza la base de datos y 
+              muestra por consola el número de registros insertados.
+
+    Raises:
+        FileNotFoundError: Si el archivo CSV no existe.
+        psycopg2.DatabaseError: Si ocurre un error al ejecutar la consulta SQL.
+        KeyError: Si faltan columnas necesarias en el DataFrame.
+        Exception: Para cualquier otro error durante la ejecución del proceso.
+
+    Requisitos:
+        - La tabla `indicadores_tecnicos` debe tener una restricción de unicidad en `(date, ticker)`.
+        - La función `get_connection()` debe retornar una conexión activa a la base de datos PostgreSQL.
+    """
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -194,8 +324,33 @@ def upsert_indicadores_tecnicos(csv_path):
     print(f"✅ Indicadores técnicos cargados correctamente ({len(df)} registros nuevos).")
 
 
-def upsert_resumen_inversion(csv_path):
-    """Carga incremental de resumen de inversión actualizado (incluyendo Estado_Fibonacci correctamente)."""
+def upsert_resumen_inversion(csv_path):    
+    """
+    Inserta o actualiza de forma incremental el resumen de inversión por ticker en la base de datos.
+
+    Esta función carga un archivo CSV con señales combinadas de análisis técnico y fundamental, 
+    incluyendo el estado del indicador de Fibonacci, y lo sincroniza con la tabla `resumen_inversion`.
+    Se utiliza un `ON CONFLICT` sobre `ticker` para actualizar los datos si ya existen.
+
+    Args:
+        csv_path (str): Ruta al archivo CSV que contiene el resumen de inversión generado por el análisis.
+
+    Returns:
+        None: La función no retorna un valor explícito, pero actualiza la base de datos y muestra un mensaje
+              con la cantidad de registros insertados o actualizados.
+
+    Raises:
+        FileNotFoundError: Si el archivo CSV no existe.
+        psycopg2.DatabaseError: Si ocurre un error de conexión o ejecución de SQL.
+        KeyError: Si faltan columnas requeridas en el archivo.
+        Exception: Para errores generales durante la ejecución.
+
+    Requisitos:
+        - La tabla `resumen_inversion` debe existir con una restricción de unicidad sobre `ticker`.
+        - Las columnas del CSV deben incluir: 'Ticker', '%_Tecnico_Buy', '%_Fundamental_Buy', 'Decision_Final',
+          'Estado_BollingerBands', 'SMA_vs_EMA', 'MACD', 'RSI', 'PER', 'ROE', 'EPS Growth YoY',
+          'Deuda/Patrimonio' y 'Estado_Fibonacci'.
+    """
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -245,8 +400,34 @@ def upsert_resumen_inversion(csv_path):
     conn.close()
     print(f"✅ Resumen de inversión cargado correctamente ({len(df)} registros nuevos).")
 
-def upsert_precios_variaciones(csv_path):
-    """Carga incremental de variaciones de precios."""
+def upsert_precios_variaciones(csv_path):    
+    """
+    Inserta o actualiza de forma incremental los registros de variaciones porcentuales de precios 
+    en la tabla `precios_variaciones`.
+
+    La función compara las fechas del archivo CSV con la última fecha disponible en la tabla y 
+    carga únicamente los registros más recientes. Utiliza `ON CONFLICT` para evitar duplicados, 
+    actualizando los valores si el `ticker` y la `date` ya existen.
+
+    Args:
+        csv_path (str): Ruta al archivo CSV con las variaciones de precios. 
+                        Debe incluir las columnas:
+                        'Date', 'Ticker', 'Close', 'var_daily', 'var_weekly',
+                        'var_monthly', 'var_annual', 'var_5y'.
+
+    Returns:
+        None: No devuelve un valor explícito. Inserta o actualiza los datos en la base de datos.
+
+    Raises:
+        FileNotFoundError: Si el archivo CSV no existe.
+        psycopg2.DatabaseError: Si ocurre un error de conexión o en la ejecución SQL.
+        KeyError: Si el CSV no contiene todas las columnas necesarias.
+        Exception: Para otros errores durante la ejecución.
+
+    Requisitos:
+        - La tabla `precios_variaciones` debe tener una restricción de unicidad en (date, ticker).
+        - La función `get_connection()` debe retornar una conexión válida a PostgreSQL.
+    """
     conn = get_connection()
     cursor = conn.cursor()
 
