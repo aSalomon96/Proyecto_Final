@@ -77,6 +77,46 @@ El análisis exploratorio permitió detectar:
 - Aprovechar patrones temporales en modelos predictivos o alertas.
 
 ---
+## 📁 Estructura Propuesta del Repositorio
+Proyecto_Final/
+├── 📁 consultas_SQL/                       # Consultas SQL organizadas por tipo y propósito
+│   ├── Carga_tablas.sql                   # Script para carga inicial de tablas
+│   ├── consultas_APPL.sql                 # Consultas específicas para Apple
+│   ├── consultas_APPL_AVANZADAS.sql       # Consultas más complejas sobre Apple
+│   └── consultas_APPL_PRO.sql             # Consultas profesionales/personalizadas
+│
+├── 📁 dashboards/                         # Dashboards interactivos (Power BI)
+│   └── dashboard.pbix                     # Dashboard principal
+│
+├── 📁 documentacion/                      # Documentación interna y técnica
+│   ├── 01.Analisis_acciones_NYSE.md       # Visión general del análisis
+│   ├── 02.Documentación_ETL.md            # Explicación técnica del proceso ETL
+│   ├── 03.Documetacion_Informe_EDA.md     # Documento sobre análisis exploratorio
+│   └── esquema_bbdd.png                   # Esquema visual de la base de datos
+│
+├── 📁 entregables/                        # Documentos formales para presentación
+│   ├── 01.Definicion_Proyecto_Analisis_Acciones.md
+│   ├── 02.Documentacion_ETL_Proyecto_Final.md
+│   ├── 03.Informe_EDA_Completo_Resultados.md
+│   └── Trabajo_Final_DataAnalyticsHackio.md
+│
+├── 📁 notebooks/                          # Jupyter notebooks
+│   ├── 📁 clean/                          # Notebooks ordenados y definitivos
+│   │   └── EDA.ipynb                      # Exploración de datos limpia
+│   └── 📁 src/                            # Funciones auxiliares para notebooks
+│       └── soporte_query.py
+│
+├── 📁 src/etl/                            # Scripts del pipeline ETL
+│   ├── etl_01_ext.py                     # Extracción inicial
+│   ├── etl_02_ext_diario.py              # Actualización diaria
+│   ├── etl_03_transform.py               # Transformación de datos
+│   ├── etl_04_load.py                    # Carga a PostgreSQL
+│   └── main.py                           # Orquestador del proceso completo
+│
+├── .gitattributes
+├── .gitignore                            # Archivos/carpetas ignorados por Git
+└── README.md                             # Documentación principal del proyecto
+
 
 ## 🗃️ Datasets Finales
 
