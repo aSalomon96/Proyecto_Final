@@ -12,6 +12,8 @@ Permite:
 - Almacenar todo en PostgreSQL para su posterior análisis y modelado.
 - Generar reportes y dashboards para apoyar decisiones de inversión.
 - Realizar Análisis Exploratorio de Datos (EDA) detallado para obtener insights valiosos.
+- Generar señales automáticas de compra, venta o mantener combinando análisis técnico y fundamental.
+- Visualizar el ecosistema en dashboards interactivos con Power BI.
 
 ---
 
@@ -27,6 +29,8 @@ Permite:
 ### Objetivos Plus:
 - Automatización diaria de la actualización de datos.
 - Democratizar el acceso a datos financieros de calidad para pequeños inversores.
+- Generación automática de recomendaciones de inversión.
+- Base para desarrollo futuro de modelos predictivos y aplicación web.
 
 ---
 
@@ -34,9 +38,9 @@ Permite:
 
 | Fase | Scripts | Descripción |
 |:----|:--------|:------------|
-| **Extracción** | `ext.py`, `ext_diario.py` | Descarga inicial y actualización diaria de datos desde Yahoo Finance y Wikipedia. |
-| **Transformación** | `transform.py` |  Limpieza de datos y cálculo de indicadores técnicos y fundamentales. |
-| **Carga** | `load.py` | Inserción incremental en PostgreSQL, controlando duplicados y actualizaciones. |
+| **Extracción** | `etl_01_ext.py`, `etl_02_ext_diario.py` | Descarga inicial y actualización diaria de datos desde Yahoo Finance y Wikipedia. |
+| **Transformación** | `etl_03_transform.py` | Limpieza de datos y cálculo de indicadores técnicos y fundamentales. |
+| **Carga** | `etl_04_load.py` | Inserción incremental en PostgreSQL, controlando duplicados y actualizaciones. |
 | **Orquestación** | `main.py` | Automatización completa del proceso ETL. |
 
 ---
@@ -46,26 +50,26 @@ Permite:
 - **Históricos**: Open, High, Low, Close, Volume.  
 - **Fundamentales**: PER, ROE, EPS Growth, Deuda/Patrimonio, Market Cap, Dividend Yield, Sector, Industria.  
 - **Técnicos**:  
-  - **Media Móvil Simple (SMA)**  
-  - **Media Móvil Exponencial (EMA)**  
-  - **Relative Strength Index (RSI)**  
-  - **MACD**  
-  - **Bollinger Bands**  
-  - **Average True Range (ATR)**  
-  - **On-Balance Volume (OBV)**  
-  - **Volatilidad Histórica**  
-  - **Niveles de Fibonacci**  
+  - Media Móvil Simple (SMA)  
+  - Media Móvil Exponencial (EMA)  
+  - Relative Strength Index (RSI)  
+  - MACD  
+  - Bollinger Bands  
+  - Average True Range (ATR)  
+  - On-Balance Volume (OBV)  
+  - Volatilidad Histórica  
+  - Niveles de Fibonacci  
 
 ---
 
 ## 📈 Análisis Exploratorio de Datos (EDA)
 
 El análisis exploratorio permitió detectar:
-- 🔍 Columnas con alta proporción de nulos (`EPS Growth YoY`, `Dividend Yield`).
-- 🧮 Variables con sesgo como `PER` y `Market Cap`, ideales para transformaciones logarítmicas.
-- 🔗 Fuertes correlaciones entre variables como `Market Cap` y `Dividend Yield`.
-- 🧨 Outliers identificados con Z-score y boxplots.
-- 📅 Comportamientos temporales y fechas clave (como marzo 2020).
+- Columnas con alta proporción de nulos (`EPS Growth YoY`, `Dividend Yield`).
+- Variables con sesgo como `PER` y `Market Cap`, ideales para transformaciones logarítmicas.
+- Fuertes correlaciones entre variables como `Market Cap` y `Dividend Yield`.
+- Outliers identificados con Z-score y boxplots.
+- Comportamientos temporales y fechas clave (como marzo 2020).
 
 ### Recomendaciones:
 - Usar mediana para imputaciones en lugar de la media.
@@ -85,28 +89,40 @@ El análisis exploratorio permitió detectar:
 
 ---
 
+## 📊 Dashboards
+
+Se desarrollaron dos dashboards interactivos en Power BI:
+
+### Dashboard General
+- Ranking de empresas por capitalización.
+- Distribución de señales de inversión.
+- Análisis histórico y sectorial.
+- Mapas interactivos por sector e industria.
+
+### Dashboard Individual
+- KPIs fundamentales por empresa.
+- Indicadores técnicos (MACD, RSI, ATR, Fibonacci).
+- Recomendaciones personalizadas (compra, venta, mantener).
+
+---
+
 ## 🛠️ Tecnologías Utilizadas
 
 | Herramienta | Propósito |
 |:------------|:----------|
-| **Python 3.12** | Desarrollo del pipeline ETL. |
-| **PostgreSQL** | Base de datos relacional. |
-| **DBeaver** | Administración de la base de datos. |
-| **Power BI (futuro)** | Visualización de dashboards. |
-| **GitHub** | Control de versiones. |
-| **Principales librerías Python**: | `pandas`, `numpy`, `yfinance`, `psycopg2`, `tqdm`, `python-dotenv`. |
+| Python 3.12 | Desarrollo del pipeline ETL. |
+| PostgreSQL | Base de datos relacional. |
+| DBeaver | Administración de la base de datos. |
+| Power BI | Visualización de dashboards. |
+| GitHub | Control de versiones. |
+| Librerías | `pandas`, `numpy`, `yfinance`, `psycopg2`, `tqdm`, `python-dotenv` |
 
 ---
 
 ## 🌎 Fuente de Datos
 
-- **Yahoo Finance** (`yfinance`):  
-  - Precios de apertura, cierre, máximo, mínimo y volumen.
-  - Datos fundamentales básicos (PER, EPS, Market Cap, etc.).
-  - Datos ajustados por dividendos y splits.
-
-- **Wikipedia**:  
-  - Lista actualizada del S&P 500 (símbolos, nombres, sector, industria).
+- **Yahoo Finance** (`yfinance`)
+- **Wikipedia** (Tickers S&P 500)
 
 ---
 
@@ -117,13 +133,18 @@ El análisis exploratorio permitió detectar:
 ✅ Base de datos PostgreSQL funcional.  
 ✅ Indicadores técnicos y fundamentales calculados.  
 ✅ EDA completo documentado y visualizado.  
-🚀 Próximo paso: dashboards y modelos predictivos.
+✅ Generación de señales de inversión implementada.  
+✅ Dashboards.
 
 ---
 
 ## 📌 Próximos Desarrollos
 
-- Construcción de dashboards interactivos en Power BI para análisis visual.
+- Modelos de predicción con ML/DL.
+- Alertas automáticas de señales.
+- App web o móvil para usuarios finales.
+- Backtesting de estrategias.
+- Expansión a otras bolsas (BYMA, Bovespa, etc.).
 
 ---
 
