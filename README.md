@@ -78,6 +78,8 @@ El análisis exploratorio permitió detectar:
 
 ---
 ## 📁 Estructura del Repositorio
+
+```plaintext
 Proyecto_Final/
 ├── consultas_SQL/
 │   ├── Carga_tablas.sql
@@ -117,6 +119,8 @@ Proyecto_Final/
 ├── .gitattributes
 ├── .gitignore
 └── README.md
+```
+
 
 ## 🗃️ Datasets Finales
 
