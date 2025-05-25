@@ -143,11 +143,14 @@ Se desarrollaron dos dashboards interactivos en Power BI:
 - Análisis histórico y sectorial.
 - Mapas interactivos por sector e industria.
 
+![alt text](dashboard/PanelGeneral.png)
+
 ### Dashboard Individual
 - KPIs fundamentales por empresa.
 - Indicadores técnicos (MACD, RSI, ATR, Fibonacci).
 - Recomendaciones personalizadas (compra, venta, mantener).
 
+![alt text](dashboard/PanelAccion.png)
 ---
 
 ## 🛠️ Tecnologías Utilizadas

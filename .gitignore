@@ -28,6 +28,7 @@ data/
 *.tar.gz
 *.pkl
 .env
+.png
 
 # Ignorar carpetas de compilación
 __pycache__/
