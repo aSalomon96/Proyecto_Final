@@ -194,6 +194,39 @@ Se desarrollaron dos dashboards interactivos en Power BI:
 - Expansión a otras bolsas (BYMA, Bovespa, etc.).
 
 ---
+## ⚙️ Cómo Reproducir el Proyecto
+
+### 1. Clonar el repositorio
+
+```bash
+git clone https://github.com/aSalomon96/Proyecto_Final
+cd Proyecto_Final
+```
+### 2. Crear entorno virtual e instalar dependencias
+```bash
+python -m venv venv
+source venv/bin/activate  # en Windows: venv\\Scripts\\activate
+pip install -r requirements.txt 
+```
+Asegurate de tener Python 3.12 instalado.
+
+### 3. Configurar variables de entorno
+Crear un archivo .env en la raíz del proyecto con los siguientes valores:
+```bash
+  DB_HOST=localhost
+  DB_PORT=5432
+  DB_NAME=nombre_de_tu_base
+  DB_USER=tu_usuario
+  DB_PASS=tu_contraseña
+```
+### 4. Inicializar la base de datos
+Podés usar el script SQL que está en consultas_SQL/Carga_tablas.sql o conectarte desde DBeaver y crear las tablas necesarias.
+
+### 5. Ejecutar el pipeline ETL
+```bash
+python src/etl/main.py
+```
+---
 
 ## 🤝 Colaboración
 
